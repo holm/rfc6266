@@ -21,6 +21,7 @@ def test_parsing():
         'attachment; filename="EURO rates";'
         ' filename*=utf-8\'\'%e2%82%ac%20rates')
     assert cd.filename_unsafe == u'€ rates'
+    assert parse_headers('attachment; filename=""').filename_unsafe == None
 
 
 @pytest.mark.skipif("sys.version_info >= (3,0)")
@@ -62,3 +63,4 @@ def test_roundtrip():
     assert_roundtrip('a\"b')
     assert_roundtrip(u'aéio   o♥u"qfsdf!')
 
+test_parsing()

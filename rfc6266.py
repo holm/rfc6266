@@ -67,11 +67,12 @@ class ContentDisposition(object):
 
         self.disposition = disposition
         self.location = location
-        if assocs is None:
-            self.assocs = {}
-        else:
+        self.assocs = {}
+        if assocs is not None:
             # XXX Check that parameters aren't repeated
-            self.assocs = dict((key.lower(), val) for (key, val) in assocs)
+            for assoc in assocs:
+                if len(assoc) == 2:
+                    self.assocs[assoc[0]] = assoc[1]
 
     @property
     def filename_unsafe(self):
@@ -202,7 +203,7 @@ def parse_httplib2_response(response):
     """
 
     return parse_headers(
-        response.get('content-disposition'), response['content-location'])
+        response.get('content-disposition'), response.get('content-location'))
 
 
 def parse_requests_response(response):
@@ -386,26 +387,26 @@ def build_header(
     rv = disposition
 
     if is_token(filename):
-        rv += '; filename=%s' % (filename, )
+        rv += '; filename=%s' % (filename,)
         return rv
     elif is_ascii(filename) and is_lws_safe(filename):
         qd_filename = qd_quote(filename)
-        rv += '; filename="%s"' % (qd_filename, )
+        rv += '; filename="%s"' % (qd_filename,)
         if qd_filename == filename:
             # RFC 6266 claims some implementations are iffy on qdtext's
             # backslash-escaping, we'll include filename* in that case.
             return rv
     elif filename_compat:
         if is_token(filename_compat):
-            rv += '; filename=%s' % (filename_compat, )
+            rv += '; filename=%s' % (filename_compat,)
         else:
             assert is_lws_safe(filename_compat)
-            rv += '; filename="%s"' % (qd_quote(filename_compat), )
+            rv += '; filename="%s"' % (qd_quote(filename_compat),)
 
     # alnum are already considered always-safe, but the rest isn't.
     # Python encodes ~ when it shouldn't, for example.
     rv += "; filename*=utf-8''%s" % (percent_encode(
-        filename, safe=attr_chars_nonalnum, encoding='utf-8'), )
+        filename, safe=attr_chars_nonalnum, encoding='utf-8'),)
 
     # This will only encode filename_compat, if it used non-ascii iso-8859-1.
     return rv.encode('iso-8859-1')
