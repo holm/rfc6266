@@ -193,9 +193,12 @@ def parse_headers(content_disposition, location=None):
     # of LWS.
     assert is_lws_safe(content_disposition)
 
-    parsed = content_disposition_value.parse(content_disposition)
-    return ContentDisposition(
-        disposition=parsed[0], assocs=parsed[1:], location=location)
+    try:
+        parsed = content_disposition_value.parse(content_disposition)
+
+        return ContentDisposition(disposition=parsed[0], assocs=parsed[1:], location=location)
+    except FullFirstMatchException:
+        return ContentDisposition(location=location)
 
 
 def parse_httplib2_response(response):
