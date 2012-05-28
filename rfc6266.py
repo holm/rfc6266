@@ -17,6 +17,7 @@ from urllib import quote, unquote
 from urlparse import urlsplit
 from string import hexdigits, ascii_letters, digits
 
+import logging
 import posixpath
 import os.path
 import re
@@ -37,8 +38,13 @@ LangTagged = namedtuple('LangTagged', 'string langtag')
 
 
 if PY3K:
-    percent_encode = quote
-    percent_decode = unquote
+    # XXX Both implementations allow stray %
+    def percent_encode(string, safe, encoding):
+        return quote(string, safe, encoding, errors='strict')
+
+    def percent_decode(string, encoding):
+        # unquote doesn't default to strict, fix that
+        return unquote(string, encoding, errors='strict')
 else:
     def percent_encode(string, **kwargs):
         encoding = kwargs.pop('encoding')
@@ -98,7 +104,7 @@ class ContentDisposition(object):
             # XXX Reject non-ascii (parsed via qdtext) here?
             return self.assocs['filename']
         elif self.location is not None:
-            return posixpath.basename(self.location_path)
+            return posixpath.basename(self.location_path.rstrip('/'))
 
     @property
     def location_path(self):
@@ -161,9 +167,12 @@ def ensure_charset(text, encoding):
         return text
 
 
-def parse_headers(content_disposition, location=None):
+def parse_headers(content_disposition, location=None, relaxed=False):
     """Build a ContentDisposition from header values.
     """
+
+    logging.debug(
+        'Content-Disposition %r, Location %r', content_disposition, location)
 
     if content_disposition is None:
         return ContentDisposition(location=location)
@@ -191,30 +200,48 @@ def parse_headers(content_disposition, location=None):
     # remove CR and LF even if they aren't part of a CRLF.
     # However http doesn't allow isolated CR and LF in headers outside
     # of LWS.
-    assert is_lws_safe(content_disposition)
+
+    if relaxed:
+        # Relaxed has two effects (so far):
+        # the grammar allows a final ';' in the header;
+        # we do LWS-folding, and possibly normalise other broken
+        # whitespace, instead of rejecting non-lws-safe text.
+        # XXX Would prefer to accept only the quoted whitespace
+        # case, rather than normalising everything.
+        content_disposition = normalize_ws(content_disposition)
+        parser = content_disposition_value_relaxed
+    else:
+        # Turns out this is occasionally broken: two spaces inside
+        # a quoted_string's qdtext. Firefox and Chrome save the two spaces.
+        if not is_lws_safe(content_disposition):
+            raise ValueError(
+                content_disposition, 'Contains nonstandard whitespace')
+
+        parser = content_disposition_value
 
     try:
-        parsed = content_disposition_value.parse(content_disposition)
-
-        return ContentDisposition(disposition=parsed[0], assocs=parsed[1:], location=location)
+        parsed = parser.parse(content_disposition)
     except FullFirstMatchException:
         return ContentDisposition(location=location)
+    return ContentDisposition(
+        disposition=parsed[0], assocs=parsed[1:], location=location)
 
 
-def parse_httplib2_response(response):
+def parse_httplib2_response(response, **kwargs):
     """Build a ContentDisposition from an httplib2 response.
     """
 
     return parse_headers(
-        response.get('content-disposition'), response.get('content-location'))
+        response.get('content-disposition'),
+        response.get('content-location'), **kwargs)
 
 
-def parse_requests_response(response):
+def parse_requests_response(response, **kwargs):
     """Build a ContentDisposition from a requests (PyPI) response.
     """
 
     return parse_headers(
-        response.headers.get('content-disposition'), response.url)
+        response.headers.get('content-disposition'), response.url, **kwargs)
 
 
 def parse_ext_value(val):
@@ -228,10 +255,6 @@ def parse_ext_value(val):
         coded = coded.encode('ascii')
     decoded = percent_decode(coded, encoding=charset)
     return LangTagged(decoded, langtag)
-
-
-def parse_iso(val):
-    return ''.join(val).decode('iso-8859-1')
 
 
 # Currently LEPL doesn't handle case-insensivitity:
@@ -317,6 +340,12 @@ with DroppedSpace():
     content_disposition_value = (
         disposition_type & Star(Drop(';') & disposition_parm))
 
+    # Allows nonconformant final semicolon
+    # I've seen it in the wild, and browsers accept it
+    # http://greenbytes.de/tech/tc2231/#attwithasciifilenamenqs
+    content_disposition_value_relaxed = (
+        content_disposition_value & Optional(Drop(';')))
+
 
 def is_token_char(ch):
     # Must be ascii, and neither a control char nor a separator char
@@ -350,7 +379,11 @@ def fits_inside_codec(text, codec):
 
 
 def is_lws_safe(text):
-    return ' '.join(text.split()) == text
+    return normalize_ws(text) == text
+
+
+def normalize_ws(text):
+    return ' '.join(text.split())
 
 
 def qd_quote(text):
@@ -362,7 +395,7 @@ def build_header(
 ):
     """Generate a Content-Disposition header for a given filename.
 
-    For legacy clients that don't understant the filename* parameter,
+    For legacy clients that don't understand the filename* parameter,
     a filename_compat value may be given.
     It should either be ascii-only (recommended) or iso-8859-1 only.
     In the later case it should be a character string

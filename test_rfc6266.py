@@ -48,6 +48,39 @@ def test_location_fallback():
         None, location='https://foo/bar%c3%a9.py'
     ).filename_unsafe == u'baré.py'
 
+    assert parse_headers(
+        None, location='https://foo/'
+    ).filename_unsafe == u''
+
+    assert parse_headers(
+        None, location='https://foo/%C3%A9toil%C3%A9/'
+    ).filename_unsafe == u'étoilé'
+
+
+def test_strict():
+    # Trailing ; means the header is rejected
+    assert parse_headers('attachment;').disposition == 'inline'
+    assert parse_headers('attachment; key=val;').disposition == 'inline'
+    try:
+        cd = parse_headers(
+            'attachment; filename="spa  ced";')
+    except ValueError:
+        assert True
+    else:
+        assert False, cd
+
+
+def test_relaxed():
+    assert parse_headers(
+        'attachment;', relaxed=True).disposition == 'attachment'
+    assert parse_headers(
+        'attachment; key=val;', relaxed=True).disposition == 'attachment'
+    cd = parse_headers(
+        'attachment; filename="spa  ced";',
+        relaxed=True)
+    assert cd.filename_unsafe == u'spa ced'
+
+
 
 def test_roundtrip():
     def roundtrip(filename):
