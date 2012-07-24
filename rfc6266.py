@@ -241,7 +241,7 @@ def parse_requests_response(response, **kwargs):
     """
 
     return parse_headers(
-        response.headers.get('content-disposition'), response.url, **kwargs)
+        response.headers.get('content-disposition'), str(response.url), **kwargs)
 
 
 def parse_ext_value(val):
