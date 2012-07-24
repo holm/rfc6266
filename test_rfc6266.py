@@ -56,6 +56,10 @@ def test_location_fallback():
         None, location='https://foo/%C3%A9toil%C3%A9/'
     ).filename_unsafe == u'étoilé'
 
+    assert parse_headers(
+        None, location='http://vtv.vn/Content/Uploads/image/Trung%20khanh/Olympic%202012/SV%C4%90%20Olympic%202012%208.jpg'
+    ).filename_unsafe == u"SVĐ Olympic 2012 8.jpg"
+
 
 def test_strict():
     # Trailing ; means the header is rejected
@@ -96,4 +100,4 @@ def test_roundtrip():
     assert_roundtrip('a\"b')
     assert_roundtrip(u'aéio   o♥u"qfsdf!')
 
-test_parsing()
+test_location_fallback()
