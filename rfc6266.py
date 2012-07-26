@@ -42,17 +42,22 @@ if PY3K:
     def percent_encode(string, safe, encoding):
         return quote(string, safe, encoding, errors='strict')
 
-    def percent_decode(string, encoding):
+    def percent_decode(string, *encodings):
         # unquote doesn't default to strict, fix that
-        return unquote(string, encoding, errors='strict')
+        return unquote(string, encodings[0], errors='strict')
 else:
-    def percent_encode(string, **kwargs):
-        encoding = kwargs.pop('encoding')
+    def percent_encode(string, safe, encoding):
         return quote(string.encode(encoding), **kwargs)
 
-    def percent_decode(string, **kwargs):
-        encoding = kwargs.pop('encoding')
-        return unquote(string, **kwargs).decode(encoding)
+    def percent_decode(string, *encodings):
+        string = unquote(string)
+        for encoding in encodings:
+            try:
+                return string.decode(encoding)
+            except UnicodeDecodeError:
+                pass
+
+        return string
 
 
 class ContentDisposition(object):
@@ -111,7 +116,7 @@ class ContentDisposition(object):
         if self.location:
             return percent_decode(
                 urlsplit(self.location, scheme='http').path,
-                encoding='utf-8')
+                'utf-8', 'iso-8859-1')
 
     def filename_sanitized(self, extension, default_filename='file'):
         """Returns a filename that is safer to use on the filesystem.
@@ -253,7 +258,7 @@ def parse_ext_value(val):
         langtag = None
     if not PY3K and isinstance(coded, unicode):
         coded = coded.encode('ascii')
-    decoded = percent_decode(coded, encoding=charset)
+    decoded = percent_decode(coded, charset)
     return LangTagged(decoded, langtag)
 
 
