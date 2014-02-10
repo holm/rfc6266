@@ -258,12 +258,14 @@ def parse_requests_response(response, **kwargs):
 
 
 def parse_ext_value(val):
-    charset = val[0]
     if len(val) == 3:
         charset, langtag, coded = val
-    else:
+    elif len(val) == 2:
         charset, coded = val
         langtag = None
+    else:
+        return
+
     if not PY3K and isinstance(coded, unicode):
         coded = coded.encode('ascii')
     decoded = percent_decode(coded, encodings=(charset,))

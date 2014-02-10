@@ -84,7 +84,7 @@ def test_relaxed():
         relaxed=True)
     assert cd.filename_unsafe == u'spa ced'
 
-    cd = parse_headers('attachment; filename="medium_SIEMEAE06658_1_PE_TAP2.png";filename*=UTF-8''"medium_SIEMEAE06658_1_PE_TAP2.png"', relaxed=True)
+    cd = parse_headers('attachment; filename="medium_SIEMEAE06658_1_PE_TAP2.png";filename*=UTF-8\'\'"medium_SIEMEAE06658_1_PE_TAP2.png"', relaxed=True)
     assert cd.filename_unsafe is None
 
 
