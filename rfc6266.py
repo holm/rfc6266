@@ -56,8 +56,8 @@ else:
         encoding = kwargs.pop('encoding')
         return quote(string.encode(encoding), **kwargs)
 
-    def percent_decode(string, encodings, **kwargs):
-        encodings = kwargs.pop('')
+    def percent_decode(string, **kwargs):
+        encodings = kwargs.pop('encodings')
         string = unquote(string, **kwargs)
         for encoding in encodings:
             try:
