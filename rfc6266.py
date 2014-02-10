@@ -52,11 +52,13 @@ if PY3K:
         # unquote doesn't default to strict, fix that
         return unquote(string, encodings[0], errors='strict')
 else:
-    def percent_encode(string, safe, encoding):
+    def percent_encode(string, **kwargs):
+        encoding = kwargs.pop('encoding')
         return quote(string.encode(encoding), **kwargs)
 
-    def percent_decode(string, *encodings):
-        string = unquote(string)
+    def percent_decode(string, encodings, **kwargs):
+        encodings = kwargs.pop('')
+        string = unquote(string, **kwargs)
         for encoding in encodings:
             try:
                 return string.decode(encoding)
@@ -122,7 +124,7 @@ class ContentDisposition(object):
         if self.location:
             return percent_decode(
                 urlsplit(self.location, scheme='http').path,
-                'utf-8', 'iso-8859-1')
+                encodings=('utf-8', 'iso-8859-1'))
 
     def filename_sanitized(self, extension, default_filename='file'):
         """Returns a filename that is safer to use on the filesystem.
@@ -264,7 +266,7 @@ def parse_ext_value(val):
         langtag = None
     if not PY3K and isinstance(coded, unicode):
         coded = coded.encode('ascii')
-    decoded = percent_decode(coded, charset)
+    decoded = percent_decode(coded, encodings=(charset,))
     return LangTagged(decoded, langtag)
 
 
@@ -288,7 +290,7 @@ token_chars = attr_chars + "*'%"
 
 
 # To debug, wrap in this block:
-#with TraceVariables():
+# with TraceVariables():
 
 # Definitions from https://tools.ietf.org/html/rfc2616#section-2.2
 # token was redefined from attr_chars to avoid using AnyBut,
@@ -372,7 +374,7 @@ def usesonlycharsfrom(candidate, chars):
 
 
 def is_token(candidate):
-    #return usesonlycharsfrom(candidate, token_chars)
+    # return usesonlycharsfrom(candidate, token_chars)
     return all(is_token_char(ch) for ch in candidate)
 
 
