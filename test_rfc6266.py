@@ -24,7 +24,7 @@ def test_parsing():
     assert parse_headers('attachment; filename=""').filename_unsafe == None
 
 
-@pytest.mark.skipif("sys.version_info >= (3,0)")
+@pytest.mark.skipif("(3,0) <= sys.version_info < (3,3)")
 def test_httplib2(httpserver):
     httplib2 = pytest.importorskip('httplib2')
     http = httplib2.Http()
@@ -34,7 +34,7 @@ def test_httplib2(httpserver):
     assert parse_httplib2_response(resp).filename_unsafe == 'a b='
 
 
-@pytest.mark.skipif("sys.version_info >= (3,0)")
+@pytest.mark.skipif("(3,0) <= sys.version_info < (3,3)")
 def test_requests(httpserver):
     requests = pytest.importorskip('requests')
     httpserver.serve_content('eep', headers={

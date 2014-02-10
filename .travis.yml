@@ -1,0 +1,8 @@
+language: python
+
+install:
+- PIP_USE_MIRRORS=true PIP_DOWNLOAD_CACHE=~/.cache/pip pip install tox
+
+script:
+- PIP_USE_MIRRORS=true PIP_DOWNLOAD_CACHE=~/.cache/pip tox
+
