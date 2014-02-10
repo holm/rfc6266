@@ -84,6 +84,9 @@ def test_relaxed():
         relaxed=True)
     assert cd.filename_unsafe == u'spa ced'
 
+    cd = parse_headers('attachment; filename="medium_SIEMEAE06658_1_PE_TAP2.png";filename*=UTF-8''"medium_SIEMEAE06658_1_PE_TAP2.png"', relaxed=True)
+    assert cd.filename_unsafe is None
+
 
 
 def test_roundtrip():
@@ -100,4 +103,4 @@ def test_roundtrip():
     assert_roundtrip('a\"b')
     assert_roundtrip(u'aéio   o♥u"qfsdf!')
 
-test_location_fallback()
+test_relaxed()
